@@ -99,13 +99,24 @@ WSGI_APPLICATION = 'excel.wsgi.application'
 #     }
 # }
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.environ.get('attandace'),
+#         'USER': os.environ.get('attandace_user'),
+#         'PASSWORD': os.environ.get('tmZIO8YGLnzeUHG6ymaiIciK3ozHLmwb'),
+#         'HOST': os.environ.get('dpg-d1qde2ur433s73e8l0a0-a.oregon-postgres.render.com'),  # Typically like 'dpg-abc123.render.com'
+#         'PORT': '5432',
+#     }
+# }
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('attandace'),
-        'USER': os.environ.get('attandace_user'),
-        'PASSWORD': os.environ.get('tmZIO8YGLnzeUHG6ymaiIciK3ozHLmwb'),
-        'HOST': os.environ.get('dpg-d1qde2ur433s73e8l0a0-a.oregon-postgres.render.com'),  # Typically like 'dpg-abc123.render.com'
+        'NAME': os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'HOST': os.environ.get('DB_HOST'),
         'PORT': '5432',
     }
 }
