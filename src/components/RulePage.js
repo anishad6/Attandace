@@ -15,11 +15,15 @@ function RulePage({ rules, setRules }) {
 
   const handleSaveRules = async () => {
     setLoading(true);
-    try {
-      await axios.post('http://localhost:8000/app/save-rules/', rules);
+     await axios.post('https://atandace.onrender.com/app/save-rules/', rules);
 
       alert('✅ Rules saved to server!');
-      window.location.href = 'http://localhost:3000/upload';
+      window.location.href = '/upload'; 
+    // try {
+    //   await axios.post('http://localhost:8000/app/save-rules/', rules);
+
+    //   alert('✅ Rules saved to server!');
+    //   window.location.href = 'http://localhost:3000/upload';
     } catch (err) {
       console.error('❌ Failed to save rules:', err);
       alert('❌ Failed to save rules. Please check if the backend is running.');
