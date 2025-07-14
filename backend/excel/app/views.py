@@ -16,52 +16,90 @@ import traceback
 import re
 from .models import AttendanceRule
 import json
-
+# ------------------------
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import json
+from .models import AttendanceRule
 
 @csrf_exempt
 def save_rules(request):
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
+            raw_body = request.body.decode('utf-8')
+            print("📩 Raw request body:", raw_body)
+
+            data = json.loads(raw_body)
+            print("📦 Parsed JSON data:", data)
+
             full_day = data.get('fullDay')
             half_day_min = data.get('halfDayMin')
             half_day_max = data.get('halfDayMax')
 
-            # Save or update rules at id=1
-            rule, created = AttendanceRule.objects.get_or_create(id=1)
+            if full_day is None or half_day_min is None or half_day_max is None:
+                print("❌ One or more fields are missing")
+                return JsonResponse({'error': 'Missing one or more required fields'}, status=400)
+
+            # Create or update rule with ID = 1
+            rule, _ = AttendanceRule.objects.get_or_create(id=1)
             rule.full_day = full_day
             rule.half_day_min = half_day_min
             rule.half_day_max = half_day_max
             rule.save()
 
-            return JsonResponse({'message': 'Rules saved successfully!', 'created': created})
+            return JsonResponse({'message': 'Rules saved successfully'})
+
         except Exception as e:
+            print("❌ Exception while saving rules:", str(e))
             return JsonResponse({'error': str(e)}, status=400)
+
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 
-def evaluate_attendance(hours_worked):
-    try:
-        rule = AttendanceRule.objects.get(id=1)
-    except AttendanceRule.DoesNotExist:
-        return "Absent"  # fallback if rule not found
+# @csrf_exempt
+# def save_rules(request):
+#     if request.method == 'POST':
+#         try:
+#             data = json.loads(request.body)
+#             full_day = data.get('fullDay')
+#             half_day_min = data.get('halfDayMin')
+#             half_day_max = data.get('halfDayMax')
 
-    if hours_worked >= rule.full_day:
-        return "Full Day"
-    elif rule.half_day_min <= hours_worked < rule.half_day_max:
-        return "Half Day"
-    else:
-        return "Absent"
+#             # Save or update rules at id=1
+#             rule, created = AttendanceRule.objects.get_or_create(id=1)
+#             rule.full_day = full_day
+#             rule.half_day_min = half_day_min
+#             rule.half_day_max = half_day_max
+#             rule.save()
+
+#             return JsonResponse({'message': 'Rules saved successfully!', 'created': created})
+#         except Exception as e:
+#             return JsonResponse({'error': str(e)}, status=400)
+#     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 
-def attendance_result(request):
-    try:
-        hours = float(request.GET.get('hours'))
-        result = evaluate_attendance(hours)
-        return JsonResponse({"attendanceStatus": result})
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=400)
-        return JsonResponse({"error": str(e)}, status=400)
+# def evaluate_attendance(hours_worked):
+#     try:
+#         rule = AttendanceRule.objects.get(id=1)
+#     except AttendanceRule.DoesNotExist:
+#         return "Absent"  # fallback if rule not found
+
+#     if hours_worked >= rule.full_day:
+#         return "Full Day"
+#     elif rule.half_day_min <= hours_worked < rule.half_day_max:
+#         return "Half Day"
+#     else:
+#         return "Absent"
+
+
+# def attendance_result(request):
+#     try:
+#         hours = float(request.GET.get('hours'))
+#         result = evaluate_attendance(hours)
+#         return JsonResponse({"attendanceStatus": result})
+#     except Exception as e:
+#         return JsonResponse({"error": str(e)}, status=400)
+#         return JsonResponse({"error": str(e)}, status=400)
 
 
 @csrf_exempt
