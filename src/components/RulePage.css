@@ -1,0 +1,61 @@
+.rule-card {
+  max-width: 500px;
+  /* margin: auto; */
+  margin: 10rem auto;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.rule-title {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.rule-inputs label {
+  display: block;
+  margin-bottom: 15px;
+  font-weight: bold;
+}
+
+.rule-inputs input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.button-group {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.save-btn, .back-btn {
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.save-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.save-btn:hover {
+  background-color: #218838;
+}
+
+.back-btn {
+  background-color: #007bff;
+  color: white;
+}
+
+.back-btn:hover {
+  background-color: #0069d9;
+}
