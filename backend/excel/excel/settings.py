@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -86,17 +87,27 @@ WSGI_APPLICATION = 'excel.wsgi.application'
 #     }
 # }
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'attandace',        
+#         'USER': 'postgres',       
+#         'PASSWORD': 'root',
+#         'HOST': 'localhost',
+#         'PORT': '5432',                      
+#     }
+# }
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'attandace',        
-        'USER': 'postgres',       
-        'PASSWORD': 'root',
-        'HOST': 'localhost',
-        'PORT': '5432',                      
+        'NAME': os.environ.get('attandace'),
+        'USER': os.environ.get('attandace_user'),
+        'PASSWORD': os.environ.get('tmZIO8YGLnzeUHG6ymaiIciK3ozHLmwb'),
+        'HOST': os.environ.get('dpg-d1qde2ur433s73e8l0a0-a.oregon-postgres.render.com'),  # Typically like 'dpg-abc123.render.com'
+        'PORT': '5432',
     }
 }
-
 
 
 # Password validation
