@@ -179,14 +179,14 @@ def upload_excel(request):
 @csrf_exempt
 def generate_attendance_summary(request):
     try:
-         print("POST received in generate_attendance_summary")
+        print("POST received in generate_attendance_summary")
         from django.conf import settings
         # print("generate_attendance_summary: request received")
 
         # Step 1: Get Attendance Rules
         try:
             rule = AttendanceRule.objects.get(id=1)
-             print("Rule fetched:", rule)
+            print("Rule fetched:", rule)
         except AttendanceRule.DoesNotExist:
             return JsonResponse({"error": "Attendance rules not set. Please configure rules first."}, status=400)
 
