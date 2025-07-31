@@ -189,27 +189,7 @@ def generate_attendance_summary(request):
 
         # Step 2: Define File Paths
         # only work on render
-         # ✅ Step 1: Get uploaded file from POST
-        uploaded_file = request.FILES.get('attendance_file')
-        if not uploaded_file:
-            return JsonResponse({"error": "No file uploaded"}, status=400)
-
-        # ✅ Step 2: Get and parse rules
-        rules_json = request.POST.get('rules')
-        if not rules_json:
-            return JsonResponse({"error": "Rules not provided"}, status=400)
-
-        try:
-            rules = json.loads(rules_json)
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid rules JSON"}, status=400)
-
-        # ✅ Step 3: Read Excel directly from in-memory uploaded file
-        df = pd.read_excel(uploaded_file, header=None)
-
-        # ✅ Step 4: Process attendance (replace with real logic)
-        results = []
-        extra_hour_flag = False
+        
         # uploaded_file = request.FILES.get('attendance_file')
         
         # if not uploaded_file:
@@ -217,11 +197,11 @@ def generate_attendance_summary(request):
         
         # df = pd.read_excel(uploaded_file, header=None)
 
-        # input_file = os.path.join(settings.MEDIA_ROOT, "Transpose_Format_Attendance.xlsx")
-        # output_file = os.path.join(settings.MEDIA_ROOT, "Attendance_Summary_Report.xlsx")
+        input_file = os.path.join(settings.MEDIA_ROOT, "Transpose_Format_Attendance.xlsx")
+        output_file = os.path.join(settings.MEDIA_ROOT, "Attendance_Summary_Report.xlsx")
 
-        # if not os.path.exists(input_file):
-        #     return JsonResponse({"error": "Transpose file not found. Upload attendance file first."}, status=400)
+        if not os.path.exists(input_file):
+            return JsonResponse({"error": "Transpose file not found. Upload attendance file first."}, status=400)
 
         # Step 3: Read Excel File
         df = pd.read_excel(input_file, header=None)
