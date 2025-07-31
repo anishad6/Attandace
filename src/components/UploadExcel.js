@@ -1,4 +1,354 @@
-// Main code that is working properly
+import './UploadExcel.css';
+import React, { useState } from 'react';
+import axios from 'axios';
+
+
+function UploadExcel() {
+  const [file, setFile] = useState(null);
+  const [salaryFile, setSalaryFile] = useState(null);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [salaryUploadMsg, setSalaryUploadMsg] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resultUrl, setResultUrl] = useState(null);
+  const [salaryData, setSalaryData] = useState([]);
+
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    setErrorMsg('');
+    setSuccessMsg('');
+    setResultUrl(null);
+
+    if (!selectedFile) {
+      setFile(null);
+      return;
+    }
+
+    const allowedExtensions = ['.xlsx', '.xls', '.csv'];
+    const isValidExtension = allowedExtensions.some(ext =>
+      selectedFile.name.toLowerCase().endsWith(ext)
+    );
+
+    if (!isValidExtension) {
+      setErrorMsg('❌ Invalid format. Please upload a .xlsx, .xls, or .csv file.');
+      setFile(null);
+      return;
+    }
+
+    if (selectedFile.size > 5 * 1024 * 1024) {
+      setErrorMsg('❌ File size must be less than 5MB.');
+      setFile(null);
+      return;
+    }
+
+    setFile(selectedFile);
+  };
+
+  const handleSalaryFileChange = (e) => {
+  const file = e.target.files[0];
+  const formData = new FormData();
+  formData.append("file", file);
+
+    // const file = e.target.files[0];
+    setSalaryUploadMsg('');
+    if (!file) return;
+
+    const allowedExtensions = ['.xlsx', '.xls', '.csv'];
+    const isValid = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+
+    if (!isValid) {
+      setSalaryUploadMsg('❌ Invalid file format. Only .xlsx, .xls, .csv allowed.');
+      return;
+    }
+
+    setSalaryFile(file);
+  };
+
+  const handleUpload = async () => {
+  if (!file) {
+    setErrorMsg('⚠️ Please select a file before uploading.');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', file); // or 'attendance_file' depending on backend expectation
+
+  setLoading(true);
+  setErrorMsg('');
+  setSuccessMsg('');
+  setResultUrl(null);
+
+  try {
+    // const response = await axios.post(
+    //   'http://localhost:8000/app/upload-excel/',
+    const response = await axios.post(
+        'https://atandace.onrender.com/app/upload-excel/',
+      formData,
+      { responseType: 'blob' }
+    );
+
+    const blob = new Blob([response.data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+
+    const downloadUrl = window.URL.createObjectURL(blob);
+    setResultUrl(downloadUrl);
+
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = file.name.replace(/\.[^/.]+$/, '') + '_Processed.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+
+        // Summary file request with proper FormData
+    const summaryFormData = new FormData();
+    summaryFormData.append('attendance_file', file);
+
+    // const summaryRes = await axios.post(
+    //   'http://localhost:8000/app/generate-summary/',
+    const summaryRes = await axios.post(
+      'https://atandace.onrender.com/app/generate-summary/', 
+
+      summaryFormData,
+      { responseType: 'blob' }
+    );
+
+
+    // // Summary file request
+    // const summaryRes = await axios.post('http://localhost:8000/app/generate-summary/', {
+    //   responseType: 'blob',
+    // });
+
+    const summaryBlob = new Blob([summaryRes.data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+
+    const summaryUrl = window.URL.createObjectURL(summaryBlob);
+    const summaryLink = document.createElement('a');
+    summaryLink.href = summaryUrl;
+    summaryLink.download = 'Attendance_Summary_Report.xlsx';
+    document.body.appendChild(summaryLink);
+    summaryLink.click();
+    document.body.removeChild(summaryLink);
+    window.URL.revokeObjectURL(summaryUrl);
+
+    setSuccessMsg('✅ File processed and summary downloaded.');
+    setFile(null);
+  } catch (error) {
+    console.error('Upload error:', error);
+
+    if (error.response && error.response.data) {
+      const errData = error.response.data;
+
+      // ✅ Check if it's a Blob before using FileReader
+      if (errData instanceof Blob) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const json = JSON.parse(reader.result);
+            setErrorMsg(`❌ ${json.error || 'Upload failed.'}`);
+          } catch {
+            setErrorMsg('❌ Upload failed. Server returned invalid error format.');
+          }
+        };
+        reader.readAsText(errData);
+      } else if (typeof errData === 'object') {
+        // Direct JSON
+        setErrorMsg(`❌ ${errData.error || 'Upload failed.'}`);
+      } else {
+        setErrorMsg('❌ Upload failed. Unexpected error format.');
+      }
+    } else {
+      setErrorMsg('❌ Server error. Please try again.');
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleSalaryUpload = async () => {
+  if (!salaryFile) {
+    setSalaryUploadMsg('⚠️ Please select a salary file.');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', salaryFile);
+
+  try {
+    // const res = await axios.post('http://localhost:8000/app/upload-salary/', formData, {
+    const res = await axios.post('https://atandace.onrender.com/app/upload-salary/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    setSalaryUploadMsg('✅ Salary file uploaded successfully.');
+    setSalaryFile(null);
+    setSalaryData(res.data.data); // ✅ Save result to state
+
+  } catch (err) {
+    console.error("❌ Upload error:", err.response?.data || err.message);
+    setSalaryUploadMsg(`❌ Error: ${err.response?.data?.error || 'Upload failed'}`);
+  }
+};
+
+
+// const handleSalaryUpload = async () => {
+//   if (!salaryFile) {
+//     setSalaryUploadMsg('⚠️ Please select a salary file.');
+//     return;
+//   }
+
+//   // ✅ Create form data
+//   const formData = new FormData();
+//   formData.append('file', salaryFile);  // Key must match backend: request.FILES["file"]
+
+//   try {
+//     // ✅ Make API call to backend
+//     const res = await axios.post('http://localhost:8000/app/upload-salary/', formData, {
+//       headers: {
+//         'Content-Type': 'multipart/form-data',
+//       },
+//     });
+
+//     console.log('✅ Response:', res.data);
+//     setSalaryUploadMsg('✅ Salary file uploaded successfully.');
+//     setSalaryFile(null);  // clear file input after upload
+
+//     // Optionally do something with res.data.data
+//     // like showing in a table
+
+//   } catch (err) {
+//     console.error("❌ Upload error:", err.response?.data || err.message);
+//     setSalaryUploadMsg(`❌ Error: ${err.response?.data?.error || 'Upload failed'}`);
+//   }
+// };
+
+  // const handleSalaryUpload = async () => {
+  //   if (!salaryFile) {
+  //     setSalaryUploadMsg('⚠️ Please select a salary file.');
+  //     return;
+  //   }
+
+  //   const formData = new FormData();
+  //   formData.append('file', salaryFile);
+
+  //   try {
+  //     const res = await axios.post('http://localhost:8000/app/upload-salary/', formData);
+  //     // const res = await axios.post('https://atandace.onrender.com/app/upload-salary/', formData);
+
+  //     setSalaryUploadMsg('✅ Salary file uploaded successfully.');
+  //     setSalaryFile(null);
+  //   } catch (err) {
+  //     setSalaryUploadMsg('❌ Error uploading salary file.');
+  //   }
+  // };
+
+  const handleViewResult = () => {
+    if (resultUrl) {
+      window.open(resultUrl, '_blank');
+    }
+  };
+
+  return (
+    <div className="upload-container">
+      <div className="upload-card">
+       <button
+          className="rule-btn"
+          onClick={() => window.location.href = '/rules'}
+        >
+          ⚙️ Configure Attendance Rules
+        </button>
+        <h2>📊 Upload Attendance Excel or CSV</h2>
+
+        <input
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          onChange={handleFileChange}
+          disabled={loading}
+        />
+
+        {file && (
+          <p className="file-info">
+            📁 <strong>{file.name}</strong> ({(file.size / 1024).toFixed(1)} KB)
+          </p>
+        )}
+
+        <button onClick={handleUpload} disabled={loading || !file}>
+          {loading ? '⏳ Uploading...' : '📤 Upload & Generate Summary'}
+        </button>
+
+        {resultUrl && (
+          <button className="view-result-btn" onClick={handleViewResult}>
+            👀 View Transposed Excel
+          </button>
+        )}
+
+        {errorMsg && <p className="error-text">{errorMsg}</p>}
+        {successMsg && <p className="success-text">{successMsg}</p>}
+
+        <hr style={{ margin: '30px 0', border: '1px solid #e2e8f0' }} />
+
+        <h2>💼 Upload Salary Excel or CSV</h2>
+
+        <input
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          onChange={handleSalaryFileChange}
+          disabled={loading}
+        />
+
+        {salaryFile && (
+          <p className="file-info">
+            📁 <strong>{salaryFile.name}</strong> ({(salaryFile.size / 1024).toFixed(1)} KB)
+          </p>
+        )}
+
+        <button onClick={handleSalaryUpload} disabled={!salaryFile}>
+          📤 Upload Salary File
+        </button>
+
+        {salaryUploadMsg && (
+          <p className={salaryUploadMsg.startsWith('✅') ? 'success-text' : 'error-text'}>
+            {salaryUploadMsg}
+          </p>
+        )}
+
+        {salaryData.length > 0 && (
+  <div>
+    <h3>📊 Calculated Salary Details:</h3>
+    <table border="1" cellPadding="5">
+      <thead>
+        <tr>
+          {Object.keys(salaryData[0]).map((key) => (
+            <th key={key}>{key}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {salaryData.map((row, i) => (
+          <tr key={i}>
+            {Object.values(row).map((val, j) => (
+              <td key={j}>{val}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}
+
+      </div>
+    </div>
+  );
+}
+
+export default UploadExcel;
+
+
+
+
 
 // import './UploadExcel.css';
 // import React, { useState } from 'react';
@@ -147,237 +497,239 @@
 // export default UploadExcel;
 
 
-// end main code
 
 // ----------------------------------------------------------------------------
-import './UploadExcel.css';
-import React, { useState } from 'react';
-import axios from 'axios';
 
-function UploadExcel() {
-  const [file, setFile] = useState(null);
-  const [salaryFile, setSalaryFile] = useState(null);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-  const [salaryUploadMsg, setSalaryUploadMsg] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [resultUrl, setResultUrl] = useState(null);
+// this one i had used previous 
 
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    setErrorMsg('');
-    setSuccessMsg('');
-    setResultUrl(null);
+// import './UploadExcel.css';
+// import React, { useState } from 'react';
+// import axios from 'axios';
 
-    if (!selectedFile) {
-      setFile(null);
-      return;
-    }
+// function UploadExcel() {
+//   const [file, setFile] = useState(null);
+//   const [salaryFile, setSalaryFile] = useState(null);
+//   const [errorMsg, setErrorMsg] = useState('');
+//   const [successMsg, setSuccessMsg] = useState('');
+//   const [salaryUploadMsg, setSalaryUploadMsg] = useState('');
+//   const [loading, setLoading] = useState(false);
+//   const [resultUrl, setResultUrl] = useState(null);
 
-    const allowedExtensions = ['.xlsx', '.xls', '.csv'];
-    const isValidExtension = allowedExtensions.some(ext =>
-      selectedFile.name.toLowerCase().endsWith(ext)
-    );
+//   const handleFileChange = (e) => {
+//     const selectedFile = e.target.files[0];
+//     setErrorMsg('');
+//     setSuccessMsg('');
+//     setResultUrl(null);
 
-    if (!isValidExtension) {
-      setErrorMsg('❌ Invalid format. Please upload a .xlsx, .xls, or .csv file.');
-      setFile(null);
-      return;
-    }
+//     if (!selectedFile) {
+//       setFile(null);
+//       return;
+//     }
 
-    if (selectedFile.size > 5 * 1024 * 1024) {
-      setErrorMsg('❌ File size must be less than 5MB.');
-      setFile(null);
-      return;
-    }
+//     const allowedExtensions = ['.xlsx', '.xls', '.csv'];
+//     const isValidExtension = allowedExtensions.some(ext =>
+//       selectedFile.name.toLowerCase().endsWith(ext)
+//     );
 
-    setFile(selectedFile);
-  };
+//     if (!isValidExtension) {
+//       setErrorMsg('❌ Invalid format. Please upload a .xlsx, .xls, or .csv file.');
+//       setFile(null);
+//       return;
+//     }
 
-  const handleSalaryFileChange = (e) => {
-    const file = e.target.files[0];
-    setSalaryUploadMsg('');
-    if (!file) return;
+//     if (selectedFile.size > 5 * 1024 * 1024) {
+//       setErrorMsg('❌ File size must be less than 5MB.');
+//       setFile(null);
+//       return;
+//     }
 
-    const allowedExtensions = ['.xlsx', '.xls', '.csv'];
-    const isValid = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+//     setFile(selectedFile);
+//   };
 
-    if (!isValid) {
-      setSalaryUploadMsg('❌ Invalid file format. Only .xlsx, .xls, .csv allowed.');
-      return;
-    }
+//   const handleSalaryFileChange = (e) => {
+//     const file = e.target.files[0];
+//     setSalaryUploadMsg('');
+//     if (!file) return;
 
-    setSalaryFile(file);
-  };
+//     const allowedExtensions = ['.xlsx', '.xls', '.csv'];
+//     const isValid = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
 
-  const handleUpload = async () => {
-    if (!file) {
-      setErrorMsg('⚠️ Please select a file before uploading.');
-      return;
-    }
+//     if (!isValid) {
+//       setSalaryUploadMsg('❌ Invalid file format. Only .xlsx, .xls, .csv allowed.');
+//       return;
+//     }
 
-    const formData = new FormData();
-    formData.append('file', file);
+//     setSalaryFile(file);
+//   };
 
-    setLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('');
-    setResultUrl(null);
+//   const handleUpload = async () => {
+//     if (!file) {
+//       setErrorMsg('⚠️ Please select a file before uploading.');
+//       return;
+//     }
 
-    try {
-      const response = await axios.post(
-        'https://atandace.onrender.com/app/upload-excel/',
-        // 'http://localhost:8000/app/upload-excel/',
-        formData,
-        { responseType: 'blob' }
-      );
+//     const formData = new FormData();
+//     formData.append('file', file);
 
-      const blob = new Blob([response.data], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
+//     setLoading(true);
+//     setErrorMsg('');
+//     setSuccessMsg('');
+//     setResultUrl(null);
 
-      const downloadUrl = window.URL.createObjectURL(blob);
-      setResultUrl(downloadUrl);
+//     try {
+//       const response = await axios.post(
+//         'https://atandace.onrender.com/app/upload-excel/',
+//         // 'http://localhost:8000/app/upload-excel/',
+//         formData,
+//         { responseType: 'blob' }
+//       );
 
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = file.name.replace(/\.[^/.]+$/, '') + '_Processed.xlsx';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
+//       const blob = new Blob([response.data], {
+//         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+//       });
 
-      // const summaryRes = await axios.get('http://localhost:8000/app/generate-summary/', {
-      const summaryRes = await axios.get('https://atandace.onrender.com/app/generate-summary/', {
+//       const downloadUrl = window.URL.createObjectURL(blob);
+//       setResultUrl(downloadUrl);
 
-        responseType: 'blob',
-      });
+//       const link = document.createElement('a');
+//       link.href = downloadUrl;
+//       link.download = file.name.replace(/\.[^/.]+$/, '') + '_Processed.xlsx';
+//       document.body.appendChild(link);
+//       link.click();
+//       document.body.removeChild(link);
+//       window.URL.revokeObjectURL(downloadUrl);
 
-      const summaryBlob = new Blob([summaryRes.data], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
+//       // const summaryRes = await axios.get('http://localhost:8000/app/generate-summary/', {
+//       const summaryRes = await axios.get('https://atandace.onrender.com/app/generate-summary/', {
 
-      const summaryUrl = window.URL.createObjectURL(summaryBlob);
-      const summaryLink = document.createElement('a');
-      summaryLink.href = summaryUrl;
-      summaryLink.download = 'Attendance_Summary_Report.xlsx';
-      document.body.appendChild(summaryLink);
-      summaryLink.click();
-      document.body.removeChild(summaryLink);
-      window.URL.revokeObjectURL(summaryUrl);
+//         responseType: 'blob',
+//       });
 
-      setSuccessMsg('✅ File processed and summary downloaded.');
-      setFile(null);
-    } catch (error) {
-      console.error('Upload error:', error);
-      if (error.response && error.response.data) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          try {
-            const errData = JSON.parse(reader.result);
-            setErrorMsg(`❌ ${errData.error || 'Upload failed.'}`);
-          } catch {
-            setErrorMsg('❌ Upload failed. Server returned invalid error format.');
-          }
-        };
-        reader.readAsText(error.response.data);
-      } else {
-        setErrorMsg('❌ Server error. Please try again.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+//       const summaryBlob = new Blob([summaryRes.data], {
+//         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+//       });
 
-  const handleSalaryUpload = async () => {
-    if (!salaryFile) {
-      setSalaryUploadMsg('⚠️ Please select a salary file.');
-      return;
-    }
+//       const summaryUrl = window.URL.createObjectURL(summaryBlob);
+//       const summaryLink = document.createElement('a');
+//       summaryLink.href = summaryUrl;
+//       summaryLink.download = 'Attendance_Summary_Report.xlsx';
+//       document.body.appendChild(summaryLink);
+//       summaryLink.click();
+//       document.body.removeChild(summaryLink);
+//       window.URL.revokeObjectURL(summaryUrl);
 
-    const formData = new FormData();
-    formData.append('file', salaryFile);
+//       setSuccessMsg('✅ File processed and summary downloaded.');
+//       setFile(null);
+//     } catch (error) {
+//       console.error('Upload error:', error);
+//       if (error.response && error.response.data) {
+//         const reader = new FileReader();
+//         reader.onload = () => {
+//           try {
+//             const errData = JSON.parse(reader.result);
+//             setErrorMsg(`❌ ${errData.error || 'Upload failed.'}`);
+//           } catch {
+//             setErrorMsg('❌ Upload failed. Server returned invalid error format.');
+//           }
+//         };
+//         reader.readAsText(error.response.data);
+//       } else {
+//         setErrorMsg('❌ Server error. Please try again.');
+//       }
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
 
-    try {
-      // const res = await axios.post('http://localhost:8000/app/upload-salary/', formData);
-      const res = await axios.post('https://atandace.onrender.com/app/upload-salary/', formData);
+//   const handleSalaryUpload = async () => {
+//     if (!salaryFile) {
+//       setSalaryUploadMsg('⚠️ Please select a salary file.');
+//       return;
+//     }
 
-      setSalaryUploadMsg('✅ Salary file uploaded successfully.');
-      setSalaryFile(null);
-    } catch (err) {
-      setSalaryUploadMsg('❌ Error uploading salary file.');
-    }
-  };
+//     const formData = new FormData();
+//     formData.append('file', salaryFile);
 
-  const handleViewResult = () => {
-    if (resultUrl) {
-      window.open(resultUrl, '_blank');
-    }
-  };
+//     try {
+//       // const res = await axios.post('http://localhost:8000/app/upload-salary/', formData);
+//       const res = await axios.post('https://atandace.onrender.com/app/upload-salary/', formData);
 
-  return (
-    <div className="upload-container">
-      <div className="upload-card">
-        <h2>📊 Upload Attendance Excel or CSV</h2>
+//       setSalaryUploadMsg('✅ Salary file uploaded successfully.');
+//       setSalaryFile(null);
+//     } catch (err) {
+//       setSalaryUploadMsg('❌ Error uploading salary file.');
+//     }
+//   };
 
-        <input
-          type="file"
-          accept=".xlsx,.xls,.csv"
-          onChange={handleFileChange}
-          disabled={loading}
-        />
+//   const handleViewResult = () => {
+//     if (resultUrl) {
+//       window.open(resultUrl, '_blank');
+//     }
+//   };
 
-        {file && (
-          <p className="file-info">
-            📁 <strong>{file.name}</strong> ({(file.size / 1024).toFixed(1)} KB)
-          </p>
-        )}
+//   return (
+//     <div className="upload-container">
+//       <div className="upload-card">
+//         <h2>📊 Upload Attendance Excel or CSV</h2>
 
-        <button onClick={handleUpload} disabled={loading || !file}>
-          {loading ? '⏳ Uploading...' : '📤 Upload & Generate Summary'}
-        </button>
+//         <input
+//           type="file"
+//           accept=".xlsx,.xls,.csv"
+//           onChange={handleFileChange}
+//           disabled={loading}
+//         />
 
-        {resultUrl && (
-          <button className="view-result-btn" onClick={handleViewResult}>
-            👀 View Transposed Excel
-          </button>
-        )}
+//         {file && (
+//           <p className="file-info">
+//             📁 <strong>{file.name}</strong> ({(file.size / 1024).toFixed(1)} KB)
+//           </p>
+//         )}
 
-        {errorMsg && <p className="error-text">{errorMsg}</p>}
-        {successMsg && <p className="success-text">{successMsg}</p>}
+//         <button onClick={handleUpload} disabled={loading || !file}>
+//           {loading ? '⏳ Uploading...' : '📤 Upload & Generate Summary'}
+//         </button>
 
-        <hr style={{ margin: '30px 0', border: '1px solid #e2e8f0' }} />
+//         {resultUrl && (
+//           <button className="view-result-btn" onClick={handleViewResult}>
+//             👀 View Transposed Excel
+//           </button>
+//         )}
 
-        <h2>💼 Upload Salary Excel or CSV</h2>
+//         {errorMsg && <p className="error-text">{errorMsg}</p>}
+//         {successMsg && <p className="success-text">{successMsg}</p>}
 
-        <input
-          type="file"
-          accept=".xlsx,.xls,.csv"
-          onChange={handleSalaryFileChange}
-          disabled={loading}
-        />
+//         <hr style={{ margin: '30px 0', border: '1px solid #e2e8f0' }} />
 
-        {salaryFile && (
-          <p className="file-info">
-            📁 <strong>{salaryFile.name}</strong> ({(salaryFile.size / 1024).toFixed(1)} KB)
-          </p>
-        )}
+//         <h2>💼 Upload Salary Excel or CSV</h2>
 
-        <button onClick={handleSalaryUpload} disabled={!salaryFile}>
-          📤 Upload Salary File
-        </button>
+//         <input
+//           type="file"
+//           accept=".xlsx,.xls,.csv"
+//           onChange={handleSalaryFileChange}
+//           disabled={loading}
+//         />
 
-        {salaryUploadMsg && (
-          <p className={salaryUploadMsg.startsWith('✅') ? 'success-text' : 'error-text'}>
-            {salaryUploadMsg}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
+//         {salaryFile && (
+//           <p className="file-info">
+//             📁 <strong>{salaryFile.name}</strong> ({(salaryFile.size / 1024).toFixed(1)} KB)
+//           </p>
+//         )}
 
-export default UploadExcel;
+//         <button onClick={handleSalaryUpload} disabled={!salaryFile}>
+//           📤 Upload Salary File
+//         </button>
+
+//         {salaryUploadMsg && (
+//           <p className={salaryUploadMsg.startsWith('✅') ? 'success-text' : 'error-text'}>
+//             {salaryUploadMsg}
+//           </p>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
+
+// export default UploadExcel;
 
 
 
