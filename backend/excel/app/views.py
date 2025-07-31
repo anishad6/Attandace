@@ -188,11 +188,19 @@ def generate_attendance_summary(request):
             return JsonResponse({"error": "Attendance rules not set. Please configure rules first."}, status=400)
 
         # Step 2: Define File Paths
-        input_file = os.path.join(settings.MEDIA_ROOT, "Transpose_Format_Attendance.xlsx")
-        output_file = os.path.join(settings.MEDIA_ROOT, "Attendance_Summary_Report.xlsx")
+        # only work on render
+        uploaded_file = request.FILES.get('attendance_file')
+        
+        if not uploaded_file:
+            return JsonResponse({"error": "No file uploaded."}, status=400)
+        
+        df = pd.read_excel(uploaded_file, header=None)
 
-        if not os.path.exists(input_file):
-            return JsonResponse({"error": "Transpose file not found. Upload attendance file first."}, status=400)
+        # input_file = os.path.join(settings.MEDIA_ROOT, "Transpose_Format_Attendance.xlsx")
+        # output_file = os.path.join(settings.MEDIA_ROOT, "Attendance_Summary_Report.xlsx")
+
+        # if not os.path.exists(input_file):
+        #     return JsonResponse({"error": "Transpose file not found. Upload attendance file first."}, status=400)
 
         # Step 3: Read Excel File
         df = pd.read_excel(input_file, header=None)
