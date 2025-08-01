@@ -208,8 +208,8 @@ def generate_attendance_summary(request):
 
         # Step 3: Read Excel File
         df = pd.read_excel(input_file, header=None)
-        # results = []
-        # extra_hour_flag = False
+        results = []
+        extra_hour_flag = False
 
         for i in range(len(df)):
             if str(df.iloc[i, 0]).strip() == "Employee Name":
