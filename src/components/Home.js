@@ -1,4 +1,4 @@
-// // Home.js
+// Home.js
 // import React, { useState } from 'react';
 // import Selections from './Selections'; // adjust path if needed
 // import './Home.css';
@@ -37,3 +37,4 @@ function Home() {
 }
 
 export default Home;
+
