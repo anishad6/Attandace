@@ -88,6 +88,19 @@ WSGI_APPLICATION = 'excel.wsgi.application'
 #     }
 # }
 
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': 'sudhastar7977',
+        'HOST': 'db.kbxprumhkriqokjzflez.supabase.co',
+        'PORT': '5432',
+    }
+}
+
+
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
