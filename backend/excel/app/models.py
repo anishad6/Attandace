@@ -45,8 +45,8 @@ class AttendanceRule(models.Model):
 # absent days, extra hours, effective days, leaves taken, adjusted leaves, and lwp (Leave Without Pay).
 
 class AttendanceSummary(models.Model):
-    # employee_id = models.IntegerField(primary_key=True)
-    employee_id = models.CharField(max_length=25, primary_key=True)
+    employee_id = models.IntegerField(primary_key=True)
+    # employee_id = models.CharField(max_length=25, primary_key=True)
     employee_name = models.CharField(max_length=100)
     
     # employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='attendance_summaries')
@@ -59,8 +59,8 @@ class AttendanceSummary(models.Model):
     half_days = models.PositiveIntegerField()
     absent_days = models.PositiveIntegerField()
 
-    only_check_in = models.PositiveIntegerField(default=0)   # NEW
-    only_check_out = models.PositiveIntegerField(default=0) 
+    # only_check_in = models.PositiveIntegerField(default=0)   # NEW
+    # only_check_out = models.PositiveIntegerField(default=0) 
 
     extra_hours = models.FloatField(null=True, blank=True)  # Optional
     effective_days = models.FloatField()
