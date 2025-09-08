@@ -392,13 +392,24 @@ def generate_attendance_summary(request):
         for i in range(len(df)):
             if str(df.iloc[i, 0]).strip() == "Employee Name":
                 raw_employee = str(df.iloc[i, 1])
-                match = re.match(r"(\d+)\s*:\s*(.+)", raw_employee)
+                match = re.match(r"([A-Za-z0-9]+)\s*:\s*(.+)", raw_employee)
 
                 if not match:
                     continue  # Skip invalid format
 
-                employee_id = int(match.group(1))
+                employee_id = match.group(1).strip()   # always string now
                 name = match.group(2).strip()
+
+        # for i in range(len(df)):
+        #     if str(df.iloc[i, 0]).strip() == "Employee Name":
+        #         raw_employee = str(df.iloc[i, 1])
+        #         match = re.match(r"(\d+)\s*:\s*(.+)", raw_employee)
+
+        #         if not match:
+        #             continue  # Skip invalid format
+
+        #         employee_id = int(match.group(1))
+        #         name = match.group(2).strip()
 
                 # Get attendance rows
                 duration_row = df.iloc[i + 1, 1:]
@@ -560,18 +571,35 @@ def upload_salary(request):
         for _, row in df.iterrows():
             emp_id = str(row['employee_id']).strip()
             base_salary = float(row['salary']) if pd.notna(row['salary']) else 0.0
-            calculated_salary = base_salary  # Default to given salary if no attendance data
+            calculated_salary = base_salary  # Default if no attendance data
 
             try:
                 summary = AttendanceSummary.objects.get(employee_id=emp_id)
-                daily_rate = base_salary / summary.working_days if summary.working_days else 0
 
-                pay_for_full_days = summary.full_days * daily_rate
-                pay_for_half_days = summary.half_days * (daily_rate / 2)
-                pay_for_extra_hours = (summary.extra_hours or 0) * (daily_rate / 8)
-                deductions = summary.lwp * daily_rate
+                # Daily rate based on total days in month (instead of working days)
+                daily_rate = base_salary / summary.total_days if summary.total_days else 0
 
-                calculated_salary = round(pay_for_full_days + pay_for_half_days + pay_for_extra_hours - deductions, 2)
+                # compute monthly_off dynamically (prefer weekly_offs if present)
+                if getattr(summary, "weekly_offs", None):
+                    weekly_offs = int(summary.weekly_offs)
+                else:
+                    weekly_offs = max(0, (summary.total_days or 0) - (summary.working_days or 0))
+
+                # Final working days calculation
+                final_working_days = (
+                    (summary.full_days or 0) +
+                    (summary.half_days or 0) * 0.5 +
+                    (summary.only_check_in or 0) * 0.5 +
+                    (summary.only_check_out or 0) * 0.5 +
+                    (summary.weekly_offs or 0)
+                )
+
+                # Salary formula
+                calculated_salary = round(daily_rate * final_working_days, 2)
+
+                # Salary cannot be negative
+                if calculated_salary < 0:
+                    calculated_salary = 0.0
 
                 emp, created = Employee.objects.update_or_create(
                     attendance_summary=summary,
@@ -597,6 +625,49 @@ def upload_salary(request):
                 "email": row['email'],
                 "salary": calculated_salary
             })
+
+
+        # for _, row in df.iterrows():
+        #     emp_id = str(row['employee_id']).strip()
+        #     base_salary = float(row['salary']) if pd.notna(row['salary']) else 0.0
+        #     calculated_salary = base_salary  # Default to given salary if no attendance data
+
+        #     try:
+        #         summary = AttendanceSummary.objects.get(employee_id=emp_id)
+        #         daily_rate = base_salary / summary.working_days if summary.working_days else 0
+
+        #         pay_for_full_days = summary.full_days * daily_rate
+        #         pay_for_half_days = summary.half_days * (daily_rate / 2)
+        #         pay_for_extra_hours = (summary.extra_hours or 0) * (daily_rate / 8)
+        #         deductions = summary.lwp * daily_rate
+
+        #         calculated_salary = round(pay_for_full_days + pay_for_half_days + pay_for_extra_hours - deductions, 2)
+
+        #         emp, created = Employee.objects.update_or_create(
+        #             attendance_summary=summary,
+        #             defaults={
+        #                 'name': row['name'],
+        #                 'email': row['email'],
+        #                 'salary': calculated_salary
+        #             }
+        #         )
+
+        #         if created:
+        #             created_count += 1
+        #         else:
+        #             updated_count += 1
+
+        #     except AttendanceSummary.DoesNotExist:
+        #         skipped.append(emp_id)
+
+        #     # Always append to salary_records for frontend
+        #     salary_records.append({
+        #         "employee_id": emp_id,
+        #         "name": row['name'],
+        #         "email": row['email'],
+        #         "salary": calculated_salary
+        #     })
+            
 
         return JsonResponse({
             "message": "Salary calculated & uploaded successfully!",
